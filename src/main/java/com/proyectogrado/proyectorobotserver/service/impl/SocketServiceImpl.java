@@ -29,9 +29,7 @@ public class SocketServiceImpl implements SocketService {
             serialService = new SerialService();
             InetSocketAddress addr = new InetSocketAddress(ConexionUtil.CON_ADDRESS, ConexionUtil.CON_PORT);
             serverSocket.bind(addr);
-            while(true) {
-                accpetConexion(serverSocket);
-            }
+            accpetConexion(serverSocket);
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
