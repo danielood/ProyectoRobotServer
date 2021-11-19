@@ -5,11 +5,12 @@ import gnu.io.*;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashMap;
-import java.util.Scanner;
+import java.util.List;
 
-public class Win10RxTx {
+public class SerialService {
 
     private Enumeration<CommPortIdentifier> ports;
     private HashMap<String, CommPortIdentifier> portMap = new HashMap<>();
@@ -19,27 +20,19 @@ public class Win10RxTx {
     private InputStream input;
     private OutputStream output;
 
-    /**
-     * Inicia la aplicacion
-     *
-     * @param sc
-     */
-    public void init(Scanner sc) {
-        menu(sc);
-    }
 
-    public void searchForPorts() {
-        System.out.println("Puertos Disponibles:");
+    public List<String> searchForPorts() {
+        List<String> puertos = new ArrayList<>();
         ports = CommPortIdentifier.getPortIdentifiers();
         while (ports.hasMoreElements()) {
             CommPortIdentifier curPort = (CommPortIdentifier) ports.nextElement();
 
             if (curPort.getPortType() == CommPortIdentifier.PORT_SERIAL) {
-                System.out.println(curPort.getName());
+                puertos.add(curPort.getName());
                 portMap.put(curPort.getName(), curPort);
             }
         }
-        System.out.println("----------------------");
+        return puertos;
     }
 
     /**
@@ -54,7 +47,7 @@ public class Win10RxTx {
             CommPort commPort = null;
 
             try {
-                commPort = selectedPortIdentifier.open("Send Sms Java", 10000);
+                commPort = selectedPortIdentifier.open("",1000);
                 serialPort = (SerialPort) commPort;
                 setSerialPortParameters();
                 connected = true;
@@ -98,12 +91,9 @@ public class Win10RxTx {
      */
     public boolean initIOStream() {
         boolean successful = false;
-
         try {
-//
             input = serialPort.getInputStream();
             output = serialPort.getOutputStream();
-
             successful = true;
             return successful;
         } catch (IOException e) {
@@ -142,24 +132,8 @@ public class Win10RxTx {
         }
     }
 
-    /**
-     * Menu para abrir un puerto especifico
-     *
-     * @param sc
-     */
-    private void menu(Scanner sc) {
-        searchForPorts();
-        System.out.println("Elige el puerto ('COM1' es por defecto)");
-        String puerto = sc.nextLine();
-        System.out.println(puerto);
-        connect(puerto);
-        if (connected == true) {
-            if (initIOStream() == true) {
-                //Comando para enviar al robot que cierre la mano
-                writeData("GC");
-            }
-        }
-        disconnect();
+    public boolean isConnected() {
+        return connected;
     }
 
 }
