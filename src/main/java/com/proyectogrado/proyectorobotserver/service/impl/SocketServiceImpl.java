@@ -26,7 +26,8 @@ public class SocketServiceImpl implements SocketService {
     @Override
     public void initSocket() {
         try (ServerSocket serverSocket = new ServerSocket()) {
-
+            //Traza
+            System.out.println("Abriendo el socket del servidor");
             serialService = new SerialService();
             InetSocketAddress addr = new InetSocketAddress(ConexionUtil.CON_ADDRESS, ConexionUtil.CON_PORT);
             serverSocket.bind(addr);
@@ -39,11 +40,15 @@ public class SocketServiceImpl implements SocketService {
     }
 
     private void accpetConexion(ServerSocket serverSocket) throws IOException {
+        //Traza
+        System.out.println("Esperando conexiones");
         try (Socket newSocket = serverSocket.accept();
              InputStream is = newSocket.getInputStream();
              OutputStream out = newSocket.getOutputStream();
              InputStreamReader isr = new InputStreamReader(is);
              OutputStreamWriter osw = new OutputStreamWriter(out)) {
+            //Traza
+            System.out.println("Conexion aceptada");
             bReader = new BufferedReader(isr);
             printWriter = new PrintWriter(osw);
             sendPorts();
@@ -74,6 +79,8 @@ public class SocketServiceImpl implements SocketService {
     }
 
     private void sendPorts() {
+        //Traza
+        System.out.println("Mandando puertos");
         PortsSearch portsSearch = serialService.searchForPorts();
         if(portsSearch.getPorts()!=null) {
             List<String> puertos = portsSearch.getPorts();
