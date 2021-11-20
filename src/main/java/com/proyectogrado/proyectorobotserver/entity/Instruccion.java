@@ -59,10 +59,8 @@ public class Instruccion {
     public String toStringList(){
         String listaFormated = "";
         for(String cadena : getArgsList()){
-            listaFormated.concat(listaFormated).concat(cadena).concat(Constantes.REGEX_DIV);
+            listaFormated = listaFormated + cadena + Constantes.REGEX_DIV;
         }
-        //Traza
-        System.out.println(listaFormated);
         String cadena = getInstruccion() + Constantes.REGEX_SEPARATOR + listaFormated;
         return cadena;
     }

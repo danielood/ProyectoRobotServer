@@ -19,6 +19,13 @@ public class SocketServiceImpl implements SocketService {
     private SerialService serialService;
     private PrintWriter printWriter;
     private BufferedReader bReader;
+    private boolean serialPort;
+    private boolean dataSend;
+
+    public SocketServiceImpl(){
+        serialPort = true;
+        dataSend = true;
+    }
 
     /**
      * Se inicia el socket y se trabaja las conexiones
@@ -60,20 +67,23 @@ public class SocketServiceImpl implements SocketService {
     }
 
     private void getSerialPort() throws IOException {
-        while (!bReader.ready()) {
-        }
-        String linea = bReader.readLine();
-        if (!Instruccion.isInstruccion(linea)) {
-            sendErrorInstruccion();
-        } else {
-            Instruccion instruccion = Instruccion.getInstruccion(linea);
-            if (instruccion.getInstruccion().equals(Constantes.CONNECT_PORT)) {
-                if (instruccion.getArgsList() == null) {
-                    connectPort(instruccion.getArgs());
+        while (serialPort) {
+            if (bReader.ready()) {
+                String linea = bReader.readLine();
+                if (!Instruccion.isInstruccion(linea)) {
+                    sendErrorInstruccion();
                 } else {
-                    Instruccion instruccionError = new Instruccion(Constantes.ERROR, "Solo se puede enviar un puerto");
-                    sendInstruccionArgs(instruccionError);
+                    Instruccion instruccion = Instruccion.getInstruccion(linea);
+                    if (instruccion.getInstruccion().equals(Constantes.CONNECT_PORT)) {
+                        if (instruccion.getArgsList() == null) {
+                            connectPort(instruccion.getArgs());
+                        } else {
+                            Instruccion instruccionError = new Instruccion(Constantes.ERROR, "Solo se puede enviar un puerto");
+                            sendInstruccionArgs(instruccionError);
+                        }
+                    }
                 }
+                serialPort = false;
             }
         }
     }
@@ -96,12 +106,14 @@ public class SocketServiceImpl implements SocketService {
     }
 
     private void sendInstruccionArgs(Instruccion instruccion) {
-        printWriter.write(instruccion.toString());
+        String cadena = instruccion.toString();
+        printWriter.write(cadena);
         printWriter.flush();
     }
 
     private void sendInstruccionArgsList(Instruccion instruccion) {
-        printWriter.write(instruccion.toStringList());
+        String cadena = instruccion.toStringList();
+        printWriter.write(cadena);
         printWriter.flush();
     }
 
@@ -119,26 +131,27 @@ public class SocketServiceImpl implements SocketService {
     }
 
     private void sendData(Socket socket) throws IOException {
-        while(!bReader.ready()){
-        }
-        String linea = bReader.readLine();
-        if(Instruccion.isInstruccion(linea)){
-            Instruccion instruccion = Instruccion.getInstruccion(linea);
-            if(instruccion.getInstruccion().equals(Constantes.COMD)){
-                if(instruccion.getArgsList()==null){
-                    for(String comando: instruccion.getArgsList()){
-                        writeDataPort(comando);
+        while(dataSend) {
+            if(bReader.ready()) {
+                String linea = bReader.readLine();
+                if (Instruccion.isInstruccion(linea)) {
+                    Instruccion instruccion = Instruccion.getInstruccion(linea);
+                    if (instruccion.getInstruccion().equals(Constantes.COMD)) {
+                        if (instruccion.getArgsList() == null) {
+                            for (String comando : instruccion.getArgsList()) {
+                                writeDataPort(comando);
+                            }
+                        } else {
+                            writeDataPort(instruccion.getArgs());
+                        }
+                    } else if (instruccion.getInstruccion().equals(Constantes.CLOSE)) {
+                        socket.close();
                     }
+                } else {
+                    sendErrorInstruccion();
                 }
-                else{
-                    writeDataPort(instruccion.getArgs());
-                }
-            }else if(instruccion.getInstruccion().equals(Constantes.CLOSE)){
-                socket.close();
+                dataSend = false;
             }
-        }
-        else{
-            sendErrorInstruccion();
         }
     }
 
