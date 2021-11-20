@@ -52,7 +52,7 @@ public class Instruccion {
 
     @Override
     public String toString(){
-        String cadena = getInstruccion() + Constantes.REGEX_SEPARATOR + getArgs();
+        String cadena = getInstruccion() + Constantes.REGEX_SEPARATOR + getArgs() + "\n";
         return cadena;
     }
 
@@ -61,12 +61,12 @@ public class Instruccion {
         for(String cadena : getArgsList()){
             listaFormated = listaFormated + cadena + Constantes.REGEX_DIV;
         }
-        String cadena = getInstruccion() + Constantes.REGEX_SEPARATOR + listaFormated;
+        String cadena = getInstruccion() + Constantes.REGEX_SEPARATOR + listaFormated + "\n";
         return cadena;
     }
 
     public static boolean isInstruccion(String instruccion){
-        if(instruccion.matches("[a-z]+[:]+[a-z]")){
+        if(instruccion.matches("^[A-Z]+[:]+([a-zA-Z0-9]*+[;]?)*")){
             return true;
         }
         return false;
