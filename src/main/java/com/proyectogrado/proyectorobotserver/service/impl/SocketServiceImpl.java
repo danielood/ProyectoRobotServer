@@ -1,6 +1,7 @@
 package com.proyectogrado.proyectorobotserver.service.impl;
 
 import com.proyectogrado.proyectorobotserver.entity.Instruccion;
+import com.proyectogrado.proyectorobotserver.entity.PortsSearch;
 import com.proyectogrado.proyectorobotserver.service.SocketService;
 import com.proyectogrado.proyectorobotserver.util.ConexionUtil;
 import com.proyectogrado.proyectorobotserver.util.Constantes;
@@ -45,7 +46,7 @@ public class SocketServiceImpl implements SocketService {
              OutputStreamWriter osw = new OutputStreamWriter(out)) {
             bReader = new BufferedReader(isr);
             printWriter = new PrintWriter(osw);
-            sendPorts(printWriter);
+            sendPorts();
             getSerialPort();
             while(true){
                 sendData(newSocket);
@@ -72,17 +73,19 @@ public class SocketServiceImpl implements SocketService {
         }
     }
 
-    private void sendPorts(PrintWriter printWriter) {
-        List<String> puertos = serialService.searchForPorts();
-        Instruccion instruccion;
-        if (puertos.size() == 0) {
-            instruccion = new Instruccion(Constantes.ERROR, "No se ha podido encontrar ningun puerto disponible");
-            printWriter.write(instruccion.toString());
-        } else {
-            instruccion = new Instruccion(Constantes.PORTS, puertos);
-            printWriter.write(instruccion.toStringList());
+    private void sendPorts() {
+        PortsSearch portsSearch = serialService.searchForPorts();
+        if(portsSearch.getPorts()!=null) {
+            List<String> puertos = portsSearch.getPorts();
+            Instruccion instruccion;
+            if (puertos.size() == 0) {
+                instruccion = new Instruccion(Constantes.ERROR, "No se ha podido encontrar ningun puerto disponible");
+                sendInstruccionArgs(instruccion);
+            } else {
+                instruccion = new Instruccion(Constantes.PORTS, puertos);
+                sendInstruccionArgsList(instruccion);
+            }
         }
-        printWriter.flush();
     }
 
     private void sendInstruccionArgs(Instruccion instruccion) {

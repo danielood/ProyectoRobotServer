@@ -1,5 +1,8 @@
 package com.proyectogrado.proyectorobotserver.service.impl;
 
+import com.proyectogrado.proyectorobotserver.entity.Instruccion;
+import com.proyectogrado.proyectorobotserver.entity.PortsSearch;
+import com.proyectogrado.proyectorobotserver.util.Constantes;
 import gnu.io.*;
 
 import java.io.IOException;
@@ -21,18 +24,25 @@ public class SerialService {
     private OutputStream output;
 
 
-    public List<String> searchForPorts() {
+    public PortsSearch searchForPorts() {
+        PortsSearch portsSearch = new PortsSearch();
         List<String> puertos = new ArrayList<>();
-        ports = CommPortIdentifier.getPortIdentifiers();
-        while (ports.hasMoreElements()) {
-            CommPortIdentifier curPort = (CommPortIdentifier) ports.nextElement();
+        try {
+            ports = CommPortIdentifier.getPortIdentifiers();
+            while (ports.hasMoreElements()) {
+                CommPortIdentifier curPort = (CommPortIdentifier) ports.nextElement();
 
-            if (curPort.getPortType() == CommPortIdentifier.PORT_SERIAL) {
-                puertos.add(curPort.getName());
-                portMap.put(curPort.getName(), curPort);
+                if (curPort.getPortType() == CommPortIdentifier.PORT_SERIAL) {
+                    puertos.add(curPort.getName());
+                    portMap.put(curPort.getName(), curPort);
+                }
             }
+            portsSearch.setPorts(puertos);
+        }catch (Exception e){
+            Instruccion instruccion = new Instruccion(Constantes.ERROR,"No se han podido encontrar ningun puerto");
+            portsSearch.setInstruccion(instruccion);
         }
-        return puertos;
+        return portsSearch;
     }
 
     /**
