@@ -8,6 +8,7 @@ import gnu.io.*;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -22,6 +23,7 @@ public class SerialService {
     private SerialPort serialPort;
     private InputStream input;
     private OutputStream output;
+    private OutputStreamWriter outPutWriter;
 
 
     public PortsSearch searchForPorts() {
@@ -38,8 +40,8 @@ public class SerialService {
                 }
             }
             portsSearch.setPorts(puertos);
-        }catch (Exception e){
-            Instruccion instruccion = new Instruccion(Constantes.ERROR,"No se han podido encontrar ningun puerto");
+        } catch (Exception e) {
+            Instruccion instruccion = new Instruccion(Constantes.ERROR, "No se han podido encontrar ningun puerto");
             portsSearch.setInstruccion(instruccion);
         }
         return portsSearch;
@@ -57,11 +59,11 @@ public class SerialService {
             CommPort commPort = null;
 
             try {
-                commPort = selectedPortIdentifier.open("",1000);
+                commPort = selectedPortIdentifier.open("", 1000);
                 serialPort = (SerialPort) commPort;
                 setSerialPortParameters();
                 connected = true;
-
+                //Traza
                 System.out.println("conectado exitosamente a puerto " + puerto);
             } catch (PortInUseException e) {
                 System.out.println("Puerto en uso.");
@@ -104,6 +106,7 @@ public class SerialService {
         try {
             input = serialPort.getInputStream();
             output = serialPort.getOutputStream();
+            outPutWriter = new OutputStreamWriter(output);
             successful = true;
             return successful;
         } catch (IOException e) {
@@ -119,7 +122,7 @@ public class SerialService {
      */
     public void writeData(String aenviar) {
         try {
-            output.write(aenviar.getBytes());
+            outPutWriter.write(aenviar);
         } catch (IOException ex) {
             System.out.println("Error al enviar informacion.");
         }
@@ -130,15 +133,18 @@ public class SerialService {
      */
     public void disconnect() {
         try {
+            if (input != null) {
+                input.close();
+            }
+            if (output != null) {
+                output.close();
+            }
+            connected = false;
             if (serialPort != null) {
                 serialPort.close();
-                input.close();
-                output.close();
-                connected = false;
-                System.out.println("Desconectado.");
             }
         } catch (Exception e) {
-            System.out.println("Error al desconectar.");
+            e.printStackTrace();
         }
     }
 

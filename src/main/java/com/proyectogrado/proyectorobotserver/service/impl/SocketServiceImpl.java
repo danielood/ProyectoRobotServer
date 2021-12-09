@@ -3,6 +3,7 @@ package com.proyectogrado.proyectorobotserver.service.impl;
 import com.proyectogrado.proyectorobotserver.entity.Instruccion;
 import com.proyectogrado.proyectorobotserver.entity.PortsSearch;
 import com.proyectogrado.proyectorobotserver.service.SocketService;
+import com.proyectogrado.proyectorobotserver.thread.HiloLectura;
 import com.proyectogrado.proyectorobotserver.util.ConexionUtil;
 import com.proyectogrado.proyectorobotserver.util.Constantes;
 
@@ -14,17 +15,15 @@ import java.util.List;
 
 public class SocketServiceImpl implements SocketService {
 
-    private Socket socket;
     private ServerSocket serverSocket;
+    private Socket socket;
     private SerialService serialService;
     private PrintWriter printWriter;
     private BufferedReader bReader;
-    private boolean serialPort;
-    private boolean dataSend;
+    private List<String> puertos;
+    private HiloLectura hiloLectura;
 
-    public SocketServiceImpl(){
-        serialPort = true;
-        dataSend = true;
+    public SocketServiceImpl() {
     }
 
     /**
@@ -32,68 +31,105 @@ public class SocketServiceImpl implements SocketService {
      */
     @Override
     public void initSocket() {
-        try (ServerSocket serverSocket = new ServerSocket()) {
-            //Traza
-            System.out.println("Abriendo el socket del servidor");
+        try {
+            serverSocket = new ServerSocket();
             serialService = new SerialService();
             InetSocketAddress addr = new InetSocketAddress(ConexionUtil.CON_ADDRESS, ConexionUtil.CON_PORT);
             serverSocket.bind(addr);
             accpetConexion(serverSocket);
         } catch (IOException e) {
             e.printStackTrace();
-        } finally {
-            closeAll(socket);
+        }
+    }
+
+    public synchronized void sendConnectPort(Instruccion instruccion) {
+        String puerto = instruccion.getArgs();
+        if (!this.puertos.contains(puerto)) {
+            sendErrorInstruccion("El puerto no coincide con los del servidor");
+        } else {
+            connectPort(puerto);
+        }
+    }
+
+    public void sendErrorInstruccion() {
+        Instruccion instruccion = new Instruccion(Constantes.ERROR, "Error al enviar la peticion");
+        sendInstruccionArgs(instruccion);
+    }
+
+    public void sendErrorInstruccion(String args) {
+        Instruccion instruccion = new Instruccion();
+        instruccion.setInstruccion(Constantes.ERROR);
+        instruccion.setArgs(args);
+        sendInstruccionArgs(instruccion);
+    }
+
+    public synchronized void sendDataSerial(Instruccion instruccion) {
+        if (instruccion.getArgsList() == null) {
+            writeDataPort(instruccion.getArgs());
+        } else if (instruccion.getArgsList() != null) {
+            for (String comando : instruccion.getArgsList()) {
+                writeDataPort(comando);
+            }
+        } else {
+            sendErrorInstruccion("No se pueden enviar instrucciones vacias");
+        }
+    }
+
+    public synchronized void closeSocket() {
+        try {
+            if (socket != null) {
+                socket.close();
+                socket = null;
+            }
+            if (bReader != null) {
+                bReader.close();
+                bReader = null;
+            }
+            if (printWriter != null) {
+                printWriter.close();
+                printWriter = null;
+            }
+            serialService.disconnect();
+            if (hiloLectura.isAlive()) {
+                hiloLectura.destroyHilo();
+            }
+            if (serverSocket != null) {
+                serverSocket.close();
+                serverSocket = null;
+            }
+
+            initSocket();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
     private void accpetConexion(ServerSocket serverSocket) throws IOException {
-        //Traza
-        System.out.println("Esperando conexiones");
-        try (Socket newSocket = serverSocket.accept();
-             InputStream is = newSocket.getInputStream();
-             OutputStream out = newSocket.getOutputStream();
-             InputStreamReader isr = new InputStreamReader(is);
-             OutputStreamWriter osw = new OutputStreamWriter(out)) {
-            //Traza
-            System.out.println("Conexion aceptada");
-            bReader = new BufferedReader(isr);
-            printWriter = new PrintWriter(osw);
-            sendPorts();
-            getSerialPort();
-            while(true){
-                sendData(newSocket);
+        try {
+            if (socket == null) {
+                socket = serverSocket.accept();
+                InputStream is = socket.getInputStream();
+                OutputStream out = socket.getOutputStream();
+                InputStreamReader isr = new InputStreamReader(is);
+                OutputStreamWriter osw = new OutputStreamWriter(out);
+                bReader = new BufferedReader(isr);
+                printWriter = new PrintWriter(osw);
+                hiloLectura = new HiloLectura(bReader, this);
+                sendPorts();
+                hiloLectura.start();
+            } else {
+                sendErrorInstruccion("Ya hay una conexion al servidor");
             }
-        }
-    }
-
-    private void getSerialPort() throws IOException {
-        while (serialPort) {
-            if (bReader.ready()) {
-                String linea = bReader.readLine();
-                if (!Instruccion.isInstruccion(linea)) {
-                    sendErrorInstruccion();
-                } else {
-                    Instruccion instruccion = Instruccion.getInstruccion(linea);
-                    if (instruccion.getInstruccion().equals(Constantes.CONNECT_PORT)) {
-                        if (instruccion.getArgsList() == null) {
-                            connectPort(instruccion.getArgs());
-                        } else {
-                            Instruccion instruccionError = new Instruccion(Constantes.ERROR, "Solo se puede enviar un puerto");
-                            sendInstruccionArgs(instruccionError);
-                        }
-                    }
-                }
-                serialPort = false;
-            }
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
     private void sendPorts() {
-        //Traza
-        System.out.println("Mandando puertos");
         PortsSearch portsSearch = serialService.searchForPorts();
-        if(portsSearch.getPorts()!=null) {
+        if (portsSearch.getPorts() != null) {
             List<String> puertos = portsSearch.getPorts();
+            this.puertos = puertos;
             Instruccion instruccion;
             if (puertos.size() == 0) {
                 instruccion = new Instruccion(Constantes.ERROR, "No se ha podido encontrar ningun puerto disponible");
@@ -117,64 +153,17 @@ public class SocketServiceImpl implements SocketService {
         printWriter.flush();
     }
 
-    private void sendErrorInstruccion(){
-        Instruccion instruccion = new Instruccion(Constantes.ERROR, "Error al enviar la peticion");
-        sendInstruccionArgs(instruccion);
-    }
-
     private void connectPort(String port) {
         serialService.connect(port);
         if (serialService.isConnected()) {
             Instruccion instruccion = new Instruccion(Constantes.OK, "Se ha conectado correctamente al puerto");
             sendInstruccionArgs(instruccion);
+        } else {
+            sendErrorInstruccion();
         }
     }
 
-    private void sendData(Socket socket) throws IOException {
-        while(dataSend) {
-            if(bReader.ready()) {
-                String linea = bReader.readLine();
-                if (Instruccion.isInstruccion(linea)) {
-                    Instruccion instruccion = Instruccion.getInstruccion(linea);
-                    if (instruccion.getInstruccion().equals(Constantes.COMD)) {
-                        if (instruccion.getArgsList() == null) {
-                            for (String comando : instruccion.getArgsList()) {
-                                writeDataPort(comando);
-                            }
-                        } else {
-                            writeDataPort(instruccion.getArgs());
-                        }
-                    } else if (instruccion.getInstruccion().equals(Constantes.CLOSE)) {
-                        socket.close();
-                    }
-                } else {
-                    sendErrorInstruccion();
-                }
-                dataSend = false;
-            }
-        }
-    }
-
-    private void writeDataPort(String comando){
+    private void writeDataPort(String comando) {
         serialService.writeData(comando);
-    }
-
-
-    /**
-     * Metodo que obtiene un socket y lo cierra
-     *
-     * @param socket
-     */
-    private void closeAll(Socket socket) {
-        if (socket != null) {
-            try {
-                socket.close();
-                printWriter.close();
-                bReader.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-
     }
 }

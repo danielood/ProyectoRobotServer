@@ -4,7 +4,7 @@ public class Constantes {
 
     public static final String ERROR="ERROR";
     public static final String PORTS="PORTS";
-    public static final String CONNECT_PORT="CONNECT_PORT";
+    public static final String CONNECT_PORT="CONNECTPORT";
     public static final String REGEX_SEPARATOR = ":";
     public static final String REGEX_DIV=";";
     public static final String OK="OK";

@@ -66,7 +66,7 @@ public class Instruccion {
     }
 
     public static boolean isInstruccion(String instruccion){
-        if(instruccion.matches("^[A-Z]+[:]+([a-zA-Z0-9]*+[;]?)*")){
+        if(instruccion.matches("^[A-Z]+[:]+([a-zA-Z0-9 ]*+[;]?)*")){
             return true;
         }
         return false;
