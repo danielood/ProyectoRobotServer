@@ -155,7 +155,7 @@ public class SocketServiceImpl implements SocketService {
 
     private void connectPort(String port) {
         serialService.connect(port);
-        if (serialService.isConnected()) {
+        if (serialService.initIOStream() && serialService.isConnected()) {
             Instruccion instruccion = new Instruccion(Constantes.OK, "Se ha conectado correctamente al puerto");
             sendInstruccionArgs(instruccion);
         } else {
